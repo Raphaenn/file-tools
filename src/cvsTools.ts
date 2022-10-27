@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { createInterface } from 'readline';
 import { stdin as input, stdout as output } from 'node:process';
 import { format, parseFile } from 'fast-csv';
@@ -43,10 +44,10 @@ class CsvTools {
   async mergeCsvFiles(pathFile: string[], outputFilePath: string) {
 
     // * Return a number of promises for every files
-    const promises = pathFile.map((path) => {
+    const promises = pathFile.map((paths) => {
       return new Promise((resolve) => {
         const dataArray: string[] = [];
-        return parseFile(path, { headers: true })
+        return parseFile(paths, { headers: true })
           .on('data', (data: any) => {
             dataArray.push(data);
           })
@@ -127,11 +128,43 @@ class CsvTools {
 
   }
 
+  async mergeFilesFromPath(folder: string, destine: string) {
+    const files = fs.readdirSync(folder);
+    const validFiles = files.filter((i) => i.includes('.csv'));
+    const promise = validFiles.map((file) => {
+      return new Promise((resolve) => {
+        const dataArray: string[] = [];
+        const filePath = path.join(__dirname, '../../../../Desktop/planilhas');
+        return parseFile(`${filePath}/${file}`, { headers: true })
+          .on('data', (data: any) => {
+            dataArray.push(data);
+          })
+          .on('end', () => {
+            resolve(dataArray);
+          });
+      });
+    });
+    const results = await Promise.all(promise);
+    
+    const csvStream = format({ headers: true });
+    // create csv file with defined name
+    const writebleStream = fs.createWriteStream(destine);
+    csvStream.pipe(writebleStream);
+
+    // loopinng to write resulto promise inside a csv file
+    results.forEach((element: any) => {
+      element.forEach((data: any) => {
+        csvStream.write(data);
+      });
+    });
+    csvStream.end();
+    
+  }
+
 }
 
 const result = new CsvTools();
+result.mergeFilesFromPath('/Users/raphaelneves/Desktop/planilhas', 'cartoes.csv');
 // const files = ['planilha.csv', 'planilha2.csv'];
-const file = 'cancelados.csv';
-result.convertCsvToJson(file);
 
 // concatCSVAndOutput(['one.csv', 'two.csv'], 'outputfile.csv').then(() => ...doStuff);
