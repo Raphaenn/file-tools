@@ -1,6 +1,7 @@
-import fs from 'fs';
-import { createInterface } from 'readline';
-import { stdin as input, stdout as output } from 'node:process';
+import fs, { WriteStream } from 'fs';
+import path from 'path';
+// import { createInterface } from 'readline';
+// import { stdin as input, stdout as output } from 'node:process';
 import { format, parseFile } from 'fast-csv';
 
 class CsvTools { 
@@ -40,13 +41,67 @@ class CsvTools {
     return result;
   }
 
+  convertJsonToCsv(file: string) {
+    // Read file data
+    const data = fs.readFileSync(file, 'utf-8');
+
+    // Get data
+    let result = [];
+    const lines = data.split('\r\n');
+    const headers = lines[0].split(','); 
+    
+    // Get line by line
+    for (const line of lines) {
+      const splitLine = line.split(',');
+      const obj: any = {};
+      
+      // Join line with object key
+      for (let i = 0; i < headers.length; i++) {
+        obj[headers[i]] = splitLine[i];
+      }
+      
+      result.push(obj);
+    }
+    
+    // // Returns the result
+    // console.log(result);
+
+    // // choose another string to temporally replace commas if necessary
+    // let stringToReplaceComas = '!!!!';
+
+    // myObj.rows.map((singleRow) => {
+    //   singleRow.map((value, index) => {
+    //     singleRow[index] = value.replace(/,/g, stringToReplaceComas);
+    //   });
+    // });
+
+    // let csv = `"${myObj.rows.join('"\n"').replace(/,/g, '","')}"`;
+    // // // or like this
+    // // let csv = `"${myObj.rows.join('"\n"').split(',').join('","')}"`;
+
+    // csv = csv.replace(new RegExp(`${stringToReplaceComas}`, 'g'), ',');
+
+    // // // 2. Another way - if you don't need the double quotes in the generated csv and you don't have comas in rows' values
+    // // let csv = myObj.rows.join('\n')
+
+    // fs.writeFile('name.csv', csv, 'utf8', function (err) {
+    //   if (err) {
+    //     console.log('Some error occured - file either not saved or corrupted file saved.');
+    //   } else {
+    //     console.log('It\'s saved!');
+    //   }
+    // });
+
+    return result;
+  }
+
   async mergeCsvFiles(pathFile: string[], outputFilePath: string) {
 
     // * Return a number of promises for every files
-    const promises = pathFile.map((path) => {
+    const promises = pathFile.map((paths) => {
       return new Promise((resolve) => {
         const dataArray: string[] = [];
-        return parseFile(path, { headers: true })
+        return parseFile(paths, { headers: true })
           .on('data', (data: any) => {
             dataArray.push(data);
           })
@@ -84,54 +139,71 @@ class CsvTools {
     
   }
 
-
-  consolePrograms() {
-    const rl = createInterface({ input, output });
-    rl.on('line', (res) => {
-      console.log(`Received: ${res}`);
-    });
-  }
-
-  async convertCsvToJsonApi(file: string) {
-    // todo: Receber um arquivo csv e ler dados
-    const parsePromise = new Promise((resolve) => {
+  async convertCsvToJsonApi(file: string, fileName: string) {
+    const parsePromise: Promise<string[]> = new Promise((resolve) => {
       let dataArray: string[] = [];
       parseFile(file, { headers: true })
-        .on('data', (cards: any) => {
-          dataArray.push(cards);
+        .on('data', (purchase: any) => {
+          dataArray.push(purchase);
         })
         .on('end', () => {
           resolve(dataArray);
         });
     });
+    const allItens: string[] = await parsePromise;
 
-    const api = (email: string) => {
+    const jsonFile = fs.writeFileSync(`${fileName}.json`, JSON.stringify(allItens));
+    return jsonFile;
+  }
+
+  async mergeFilesFromPath(folder: string, destine: string) {
+    const files = fs.readdirSync(folder);
+    const validFiles = files.filter((i) => i.includes('.csv'));
+    const promise = validFiles.map((file) => {
       return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(email);
-        }, 3000);
+        const dataArray: string[] = [];
+        const filePath = path.join(folder);
+        return parseFile(`${filePath}/${file}`, { headers: true })
+          .on('data', (data: any) => {
+            dataArray.push(data);
+          })
+          .on('end', () => {
+            resolve(dataArray);
+          });
       });
-    };
-
-    let data = [];
-    const cards: any = await Promise.resolve(parsePromise);
-    for (const card of cards) {
-      data.push(await api(card.name));
-    }
-
+    });
+    const results = await Promise.all(promise);
     
+    const csvStream = format({ headers: true });
+    // create csv file with defined name
+    const writebleStream = fs.createWriteStream(destine);
+    csvStream.pipe(writebleStream);
 
-    // todo: Pegar esses dados e transformar em um json
-    // todo: Pegar o json e para cada item chamar uma promise
-    // * Garantir que todo o processo ira aguardr a promise resolver para buscar a próxima
+    // loopinng to write result promise inside a csv file
+    results.forEach((element: any) => {
+      element.forEach((data: any) => {
+        csvStream.write(data);
+      });
+    });
+    csvStream.end();
+    
+  }
 
+  async saveStringIntoTextFile(fileName: string, text: string): Promise<boolean> {
+    // todo - create the file
+    
+    //todo - write the text inside the file
+    const writeData = fs.createWriteStream(fileName).write(text);
+
+    return writeData.valueOf();
   }
 
 }
 
 const result = new CsvTools();
-// const files = ['planilha.csv', 'planilha2.csv'];
-const file = 'cancelados.csv';
-result.convertCsvToJson(file);
+result.convertCsvToJsonApi('pix.csv', 'pix');
+// result.mergeFilesFromPath('/Users/raphaelneves/Desktop/pix', 'pix.csv');
+// result.saveStringIntoTextFile('dock.txt', 'Csv from dock that contain the callback of function.');
+// const files = '/Users/raphaelneves/Desktop/purchases';
 
 // concatCSVAndOutput(['one.csv', 'two.csv'], 'outputfile.csv').then(() => ...doStuff);

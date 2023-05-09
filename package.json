@@ -6,8 +6,9 @@
   "author": "Raphael Neves",
   "license": "MIT",
   "scripts": {
-    "go": "sucrase-node src/index.ts",
+    "it": "sucrase-node src/internetConnections.ts",
     "csv": "sucrase-node src/cvsTools.ts",
+    "encode": "sucrase-node src/convertToJwt.ts",
     "test": "jest --passWithNoTests --silent --noStackTrace --runInBand",
     "test:verbose": "jest --runInBand",
     "test:unit": "yarn test -- --watch -c jest-unit-config.js",
@@ -17,6 +18,7 @@
   "devDependencies": {
     "@shelf/jest-mongodb": "^2.1.0",
     "@types/jest": "^26.0.24",
+    "@types/jsonwebtoken": "^9.0.1",
     "@types/mongodb": "^4.0.7",
     "@types/node": "^16.3.1",
     "@typescript-eslint/eslint-plugin": "^5.32.0",
@@ -44,6 +46,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "fast-csv": "^4.3.6",
     "fast-glob": "^3.2.11",
+    "jsonwebtoken": "^9.0.0",
     "sucrase": "^3.25.0",
     "yarn": "^1.22.19"
   }
